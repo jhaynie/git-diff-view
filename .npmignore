@@ -3,3 +3,6 @@ CLAUDE.md
 screenshot.png
 node_modules
 .git
+/frontend.tsx
+/styles.css
+/index.html

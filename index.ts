@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun";
-import index from "./index.html";
+import { join, dirname } from "path";
 
 const SCRIPT_PATH = import.meta.path;
 
@@ -67,14 +67,59 @@ const run = async (args: string[]) => {
 
   const diffData = JSON.stringify({ patch, theme });
 
+  const scriptDir = dirname(SCRIPT_PATH).replace("file://", "");
+  const isBundle = SCRIPT_PATH.includes("/dist/");
+  const distDir = isBundle ? scriptDir : join(scriptDir, "dist");
+
+  const jsPath = join(distDir, "frontend.js");
+  const cssPath = join(distDir, "styles.css");
+
+  const bgColor = dark ? "#1a1a1a" : "#ffffff";
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Git Diff</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>body { background: ${bgColor}; }</style>
+</head>
+<body>
+  <div id="diff"></div>
+  <script type="module" src="/frontend.js"></script>
+</body>
+</html>`;
+
   const server = Bun.serve({
     port: 0,
     development: false,
-    routes: {
-      "/": index,
-      "/api/diff": new Response(diffData, {
-        headers: { "Content-Type": "application/json" },
-      }),
+    fetch(req) {
+      const url = new URL(req.url);
+      
+      if (url.pathname === "/") {
+        return new Response(html, {
+          headers: { "Content-Type": "text/html" },
+        });
+      }
+      
+      if (url.pathname === "/frontend.js") {
+        return new Response(Bun.file(jsPath), {
+          headers: { "Content-Type": "application/javascript" },
+        });
+      }
+      
+      if (url.pathname === "/styles.css") {
+        return new Response(Bun.file(cssPath), {
+          headers: { "Content-Type": "text/css" },
+        });
+      }
+      
+      if (url.pathname === "/api/diff") {
+        return new Response(diffData, {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      
+      return new Response("Not Found", { status: 404 });
     },
   });
 

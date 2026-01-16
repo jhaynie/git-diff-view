@@ -1,13 +1,15 @@
 {
   "name": "git-diff-view",
-  "version": "0.0.6",
+  "version": "0.0.12",
   "module": "index.ts",
   "type": "module",
   "bin": {
-    "git-diff-view": "./index.ts"
+    "git-diff-view": "./dist/cli.js"
   },
   "scripts": {
-    "start": "bun run index.ts"
+    "start": "bun run index.ts",
+    "build": "bun build ./index.ts --outfile ./dist/cli.js --target bun --minify && bun build ./frontend.tsx --outdir ./dist --minify && bun build ./styles.css --outdir ./dist --minify",
+    "prepublishOnly": "bun run build"
   },
   "devDependencies": {
     "@types/bun": "latest"
