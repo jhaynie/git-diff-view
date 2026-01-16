@@ -1,6 +1,6 @@
 {
   "name": "git-diff-view",
-  "version": "0.0.4",
+  "version": "0.0.6",
   "module": "index.ts",
   "type": "module",
   "bin": {

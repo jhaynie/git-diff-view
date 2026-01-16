@@ -69,6 +69,7 @@ const run = async (args: string[]) => {
 
   const server = Bun.serve({
     port: 0,
+    development: false,
     routes: {
       "/": index,
       "/api/diff": new Response(diffData, {
