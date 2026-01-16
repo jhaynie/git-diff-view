@@ -75,15 +75,10 @@ const run = async (args: string[]) => {
         headers: { "Content-Type": "application/json" },
       }),
     },
-    development: {
-      hmr: true,
-    },
   });
 
   const url = `http://localhost:${server.port}`;
-  console.log(`Opening diff at ${url}`);
-
-  await $`open ${url}`;
+  await $`open ${url}`.quiet();
 
   await Bun.sleep(3000);
   server.stop();
