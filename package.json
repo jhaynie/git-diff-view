@@ -1,0 +1,26 @@
+{
+  "name": "git-diff-view",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "bin": {
+    "git-diff-view": "./index.ts"
+  },
+  "scripts": {
+    "start": "bun run index.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@pierre/diffs": "^1.0.6",
+    "@types/react": "^19.2.8",
+    "@types/react-dom": "^19.2.3",
+    "ansis": "^4.2.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
+  }
+}
