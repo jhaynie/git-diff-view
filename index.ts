@@ -1,6 +1,9 @@
 #!/usr/bin/env bun
 
 import { $ } from "bun";
+import index from "./index.html";
+
+const SCRIPT_PATH = import.meta.path;
 
 const isDarkMode = async (): Promise<boolean> => {
   if (process.platform !== "darwin") return true;
@@ -12,94 +15,132 @@ const isDarkMode = async (): Promise<boolean> => {
   }
 };
 
-const getPatch = async (): Promise<string> => {
-  const args = process.argv.slice(2);
+const getPatch = async (args: string[]): Promise<string> => {
   try {
-    if (args.length > 0) {
-      const result = await $`git diff ${args}`.quiet();
-      return result.text();
+    const proc = Bun.spawn(["git", "diff", ...args], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const stdout = await new Response(proc.stdout).text();
+    const stderr = await new Response(proc.stderr).text();
+    const exitCode = await proc.exited;
+
+    if (exitCode !== 0) {
+      if (stderr.includes("Not a git repository")) {
+        console.error("Error: Not a git repository");
+        process.exit(1);
+      }
+      console.error(stderr);
+      process.exit(exitCode);
     }
-    const result = await $`git diff`.quiet();
-    return result.text();
-  } catch (err: unknown) {
-    if (err instanceof Error && err.message.includes("Not a git repository")) {
-      console.error("Error: Not a git repository");
-      process.exit(1);
-    }
+    return stdout;
+  } catch (err) {
     throw err;
   }
 };
 
-const patch = await getPatch();
-if (!patch.trim()) {
-  console.log("No diff to display");
-  process.exit(0);
-}
+const install = async () => {
+  const aliasValue = `!${SCRIPT_PATH} run`;
+  await $`git config --global alias.dv ${aliasValue}`;
+  console.log("✓ Installed git alias 'dv'");
+  console.log("  Usage: git dv [options]");
+};
 
-const dark = await isDarkMode();
-const theme = dark ? "pierre-dark" : "pierre-light";
+const uninstall = async () => {
+  try {
+    await $`git config --global --unset alias.dv`.quiet();
+    console.log("✓ Uninstalled git alias 'dv'");
+  } catch {
+    console.log("Alias 'dv' was not installed");
+  }
+};
 
-const html = `<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <title>Git Diff</title>
-  <style>
-    :root {
-      color-scheme: ${dark ? "dark" : "light"};
-    }
-    body {
-      margin: 0;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: ${dark ? "#1a1a1a" : "#ffffff"};
-    }
-  </style>
-</head>
-<body>
-  <div id="diff"></div>
-  <script type="module">
-    import { PatchDiff } from "@pierre/diffs/react";
-    import React from "react";
-    import { createRoot } from "react-dom/client";
+const run = async (args: string[]) => {
+  const patch = await getPatch(args);
+  if (!patch.trim()) {
+    console.log("No diff to display");
+    process.exit(0);
+  }
 
-    const patch = ${JSON.stringify(patch)};
-    
-    const App = () => {
-      return React.createElement(PatchDiff, {
-        patch,
-        layout: "stacked",
-        theme: "${theme}",
-        diffStyle: "bars",
-        showLineNumbers: true,
-        lineDiffType: "word",
-      });
-    };
+  const dark = await isDarkMode();
+  const theme = dark ? "pierre-dark" : "pierre-light";
 
-    createRoot(document.getElementById("diff")).render(React.createElement(App));
-  </script>
-</body>
-</html>`;
+  const diffData = JSON.stringify({ patch, theme });
 
-const server = Bun.serve({
-  port: 0,
-  routes: {
-    "/": new Response(html, {
-      headers: { "Content-Type": "text/html" },
-    }),
-  },
-  development: true,
-});
+  const server = Bun.serve({
+    port: 0,
+    routes: {
+      "/": index,
+      "/api/diff": new Response(diffData, {
+        headers: { "Content-Type": "application/json" },
+      }),
+    },
+    development: {
+      hmr: true,
+    },
+  });
 
-const url = `http://localhost:${server.port}`;
-console.log(`Opening diff at ${url}`);
+  const url = `http://localhost:${server.port}`;
+  console.log(`Opening diff at ${url}`);
 
-await $`open ${url}`;
+  await $`open ${url}`;
 
-process.on("SIGINT", () => {
+  await Bun.sleep(3000);
   server.stop();
   process.exit(0);
-});
+};
 
-console.log("Press Ctrl+C to exit");
-await Bun.sleep(Number.MAX_SAFE_INTEGER);
+const showHelp = () => {
+  console.log(`git-diff-view - Beautiful git diffs in your browser
+
+Usage:
+  git-diff-view <command> [options]
+
+Commands:
+  install     Install the 'git dv' alias globally
+  uninstall   Remove the 'git dv' alias
+  run         View diff in browser (used by the alias)
+
+Examples:
+  git-diff-view install
+  git-diff-view run
+  git-diff-view run --staged
+  git-diff-view run HEAD~3
+
+After installing, use:
+  git dv              # unstaged changes
+  git dv --staged     # staged changes
+  git dv HEAD~3       # last 3 commits
+`);
+};
+
+const main = async () => {
+  const args = process.argv.slice(2);
+  const command = args[0];
+
+  switch (command) {
+    case "install":
+      await install();
+      break;
+    case "uninstall":
+      await uninstall();
+      break;
+    case "run":
+      await run(args.slice(1));
+      break;
+    case "--help":
+    case "-h":
+      showHelp();
+      break;
+    default:
+      if (!command) {
+        showHelp();
+      } else {
+        console.error(`Unknown command: ${command}`);
+        console.error("Run 'git-diff-view --help' for usage");
+        process.exit(1);
+      }
+  }
+};
+
+main();

@@ -1,8 +1,8 @@
 {
   "name": "git-diff-view",
+  "version": "0.0.3",
   "module": "index.ts",
   "type": "module",
-  "private": true,
   "bin": {
     "git-diff-view": "./index.ts"
   },
@@ -19,7 +19,6 @@
     "@pierre/diffs": "^1.0.6",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
-    "ansis": "^4.2.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   }
