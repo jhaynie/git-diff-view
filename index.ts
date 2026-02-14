@@ -124,7 +124,14 @@ const run = async (args: string[]) => {
   });
 
   const url = `http://localhost:${server.port}`;
-  await $`open ${url}`.quiet();
+  
+  // Open URL in default browser (cross-platform)
+  const openCommand = 
+    process.platform === "darwin" ? "open" :
+    process.platform === "win32" ? "start" :
+    "xdg-open";
+  
+  await $`${openCommand} ${url}`.quiet();
 
   await Bun.sleep(3000);
   server.stop();
